@@ -205,3 +205,19 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+
+project-requirement-ReadMe.md
+
+# dbt
+target/
+dbt_packages/
+logs/
+
+# Snowflake / secrets
+*.env
+profiles.yml
+
+# OS
+.DS_Store
+Thumbs.db
