@@ -81,12 +81,6 @@ def main():
         print("ERROR: FIRECRAWL_API_KEY not set in .env")
         sys.exit(1)
 
-    try:
-        conn = get_snowflake_conn()
-    except Exception as e:
-        print(f"ERROR: Snowflake connection failed: {e}")
-        sys.exit(1)
-
     print(f"Crawling {ZURU_URL} (limit={CRAWL_LIMIT} pages)...")
     try:
         crawl_id, pages = crawl_zuru(api_key)
@@ -95,6 +89,12 @@ def main():
         sys.exit(1)
 
     print(f"  Got {len(pages)} pages (crawl_id={crawl_id})")
+
+    try:
+        conn = get_snowflake_conn()
+    except Exception as e:
+        print(f"ERROR: Snowflake connection failed: {e}")
+        sys.exit(1)
 
     try:
         cur = conn.cursor()
@@ -111,7 +111,11 @@ def main():
 
     for page in pages:
         row = build_row(page, crawl_id, loaded_at)
-        cur.execute(insert_sql, row)
+        try:
+            cur.execute(insert_sql, row)
+        except Exception as e:
+            print(f"  WARNING: skipping page {row[0]}: {e}")
+            continue
 
     cur.close()
     conn.close()
