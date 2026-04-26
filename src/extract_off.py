@@ -80,8 +80,12 @@ def main():
         print(f"ERROR: Snowflake connection failed: {e}")
         sys.exit(1)
 
-    cur = conn.cursor()
-    setup_table(cur)
+    try:
+        cur = conn.cursor()
+        setup_table(cur)
+    except Exception as e:
+        print(f"ERROR: Snowflake setup failed: {e}")
+        sys.exit(1)
 
     loaded_at = datetime.now(timezone.utc).replace(tzinfo=None)
     insert_sql = (
