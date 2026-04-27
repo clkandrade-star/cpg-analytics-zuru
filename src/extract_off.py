@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+import time
 from datetime import datetime, timezone
 
 import requests
@@ -17,23 +18,28 @@ VERTICALS = {
     "health_wellness": "en:dietary-supplements",
 }
 
-OFF_URL = "https://world.openfoodfacts.org/cgi/search.pl"
+OFF_URL = "https://world.openfoodfacts.org/api/v2/search"
 PAGE_SIZE = 500
+HEADERS = {"User-Agent": "cpg-analytics-zuru/1.0 (clkandrade2005@gmail.com)"}
 
 
 def fetch_products(category_tag: str) -> list:
     params = {
-        "action": "process",
-        "tagtype_0": "categories",
-        "tag_contains_0": "contains",
-        "tag_0": category_tag,
+        "categories_tags": category_tag,
         "page_size": PAGE_SIZE,
         "page": 1,
-        "json": 1,
     }
-    resp = requests.get(OFF_URL, params=params, timeout=30)
+    for attempt in range(3):
+        resp = requests.get(OFF_URL, params=params, headers=HEADERS, timeout=30)
+        if resp.status_code == 503:
+            wait = 10 * (attempt + 1)
+            print(f"  503 on attempt {attempt + 1}, retrying in {wait}s...")
+            time.sleep(wait)
+            continue
+        resp.raise_for_status()
+        return resp.json().get("products", [])
     resp.raise_for_status()
-    return resp.json().get("products", [])
+    return []
 
 
 def build_row(product: dict, vertical: str, category_tag: str, loaded_at: datetime) -> tuple:
@@ -57,8 +63,8 @@ def get_snowflake_conn():
 
 
 def setup_table(cur):
-    cur.execute("CREATE DATABASE IF NOT EXISTS RAW")
-    cur.execute("USE DATABASE RAW")
+    cur.execute("CREATE DATABASE IF NOT EXISTS CPG_ANALYTICS")
+    cur.execute("USE DATABASE CPG_ANALYTICS")
     cur.execute("CREATE SCHEMA IF NOT EXISTS PUBLIC")
     cur.execute("USE SCHEMA PUBLIC")
     cur.execute("""
@@ -109,10 +115,11 @@ def main():
 
         print(f"  Loaded {len(products)} rows")
         total += len(products)
+        time.sleep(2)
 
     cur.close()
     conn.close()
-    print(f"Done. {total} total rows loaded into RAW.PUBLIC.OPEN_FOOD_FACTS")
+    print(f"Done. {total} total rows loaded into CPG_ANALYTICS.PUBLIC.OPEN_FOOD_FACTS")
 
 
 if __name__ == "__main__":

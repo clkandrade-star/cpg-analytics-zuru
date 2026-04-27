@@ -60,8 +60,8 @@ def get_snowflake_conn():
 
 
 def setup_table(cur):
-    cur.execute("CREATE DATABASE IF NOT EXISTS RAW")
-    cur.execute("USE DATABASE RAW")
+    cur.execute("CREATE DATABASE IF NOT EXISTS CPG_ANALYTICS")
+    cur.execute("USE DATABASE CPG_ANALYTICS")
     cur.execute("CREATE SCHEMA IF NOT EXISTS PUBLIC")
     cur.execute("USE SCHEMA PUBLIC")
     cur.execute("""
@@ -119,7 +119,7 @@ def main():
 
     cur.close()
     conn.close()
-    print(f"Done. {len(pages)} pages loaded into RAW.PUBLIC.ZURU_SCRAPE")
+    print(f"Done. {len(pages)} pages loaded into CPG_ANALYTICS.PUBLIC.ZURU_SCRAPE")
 
 
 if __name__ == "__main__":
