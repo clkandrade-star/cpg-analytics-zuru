@@ -65,8 +65,8 @@ def get_snowflake_conn():
 def setup_table(cur):
     cur.execute("CREATE DATABASE IF NOT EXISTS CPG_ANALYTICS")
     cur.execute("USE DATABASE CPG_ANALYTICS")
-    cur.execute("CREATE SCHEMA IF NOT EXISTS PUBLIC")
-    cur.execute("USE SCHEMA PUBLIC")
+    cur.execute("CREATE SCHEMA IF NOT EXISTS RAW")
+    cur.execute("USE SCHEMA RAW")
     cur.execute("""
         CREATE TABLE IF NOT EXISTS OPEN_FOOD_FACTS (
             PRODUCT_CODE   VARCHAR(50),
@@ -119,7 +119,7 @@ def main():
 
     cur.close()
     conn.close()
-    print(f"Done. {total} total rows loaded into CPG_ANALYTICS.PUBLIC.OPEN_FOOD_FACTS")
+    print(f"Done. {total} total rows loaded into CPG_ANALYTICS.RAW.OPEN_FOOD_FACTS")
 
 
 if __name__ == "__main__":
