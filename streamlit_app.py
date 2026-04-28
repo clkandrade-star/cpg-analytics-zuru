@@ -28,11 +28,13 @@ def get_conn():
 @st.cache_data(ttl=300)
 def run_query(_conn, sql: str) -> pd.DataFrame:
     cur = _conn.cursor()
-    cur.execute(sql)
-    rows = cur.fetchall()
-    cols = [desc[0] for desc in cur.description]
-    cur.close()
-    return pd.DataFrame(rows, columns=cols)
+    try:
+        cur.execute(sql)
+        rows = cur.fetchall()
+        cols = [desc[0] for desc in cur.description]
+        return pd.DataFrame(rows, columns=cols)
+    finally:
+        cur.close()
 
 
 def brand_options(conn) -> list[str]:
@@ -67,7 +69,12 @@ def category_counts(conn, brand: str | None) -> pd.DataFrame:
 st.set_page_config(page_title="CPG Analytics — ZURU", layout="wide")
 st.title("CPG Analytics — ZURU")
 
-conn = get_conn()
+try:
+    conn = get_conn()
+except Exception as e:
+    st.error(f"Could not connect to Snowflake: {e}")
+    st.stop()
+
 brands = brand_options(conn)
 selection = st.sidebar.selectbox("Brand", ["All Brands"] + brands)
 selected_brand = None if selection == "All Brands" else selection
