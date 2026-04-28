@@ -1,0 +1,9 @@
+version: 2
+
+sources:
+  - name: raw
+    database: CPG_ANALYTICS
+    schema: RAW
+    tables:
+      - name: open_food_facts
+        description: "Raw product data from Open Food Facts API"

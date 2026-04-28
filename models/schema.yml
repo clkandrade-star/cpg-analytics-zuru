@@ -1,0 +1,37 @@
+version: 2
+
+models:
+  - name: stg_products
+    description: "Cleaned and renamed product data from Open Food Facts"
+    columns:
+      - name: barcode
+        description: "Unique product barcode"
+        tests:
+          - not_null
+
+  - name: fct_products
+    description: "Fact table of CPG products"
+    columns:
+      - name: product_id
+        description: "Primary key"
+        tests:
+          - not_null
+          - unique
+
+  - name: dim_brands
+    description: "Dimension table of brands"
+    columns:
+      - name: brand_id
+        description: "Primary key"
+        tests:
+          - not_null
+          - unique
+
+  - name: dim_categories
+    description: "Dimension table of product categories"
+    columns:
+      - name: category_id
+        description: "Primary key"
+        tests:
+          - not_null
+          
