@@ -26,6 +26,30 @@ flowchart LR
     FC --> KRAW --> CC --> KWIKI
 ```
 
+## Star Schema
+
+```mermaid
+erDiagram
+    fct_products {
+        string product_id PK
+        string barcode
+        string brand_queried FK
+        string primary_category FK
+        timestamp extracted_at
+    }
+    dim_brands {
+        string brand_id PK
+        string brand_name
+    }
+    dim_categories {
+        string category_id PK
+        string category_name
+    }
+
+    fct_products }o--|| dim_brands : "brand_queried = brand_name"
+    fct_products }o--|| dim_categories : "primary_category = category_name"
+```
+
 ## Stack
 
 | Layer | Tool |
