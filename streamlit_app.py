@@ -26,10 +26,10 @@ def get_conn():
 
 
 @st.cache_data(ttl=300)
-def run_query(_conn, sql: str) -> pd.DataFrame:
+def run_query(_conn, sql: str, params: tuple = ()) -> pd.DataFrame:
     cur = _conn.cursor()
     try:
-        cur.execute(sql)
+        cur.execute(sql, params)
         rows = cur.fetchall()
         cols = [desc[0] for desc in cur.description]
         return pd.DataFrame(rows, columns=cols)
@@ -47,21 +47,35 @@ def brand_options(conn) -> list[str]:
 
 
 def brand_counts(conn, brand: str | None) -> pd.DataFrame:
-    where = f"WHERE brand_queried = '{brand}'" if brand else ""
+    if brand:
+        return run_query(
+            conn,
+            f"SELECT brand_queried AS brand, COUNT(*) AS product_count "
+            f"FROM {DB}.{SCHEMA}.fct_products WHERE brand_queried = %s "
+            "GROUP BY brand_queried ORDER BY product_count DESC LIMIT 30",
+            (brand,),
+        )
     return run_query(
         conn,
         f"SELECT brand_queried AS brand, COUNT(*) AS product_count "
-        f"FROM {DB}.{SCHEMA}.fct_products {where} "
+        f"FROM {DB}.{SCHEMA}.fct_products "
         "GROUP BY brand_queried ORDER BY product_count DESC LIMIT 30",
     )
 
 
 def category_counts(conn, brand: str | None) -> pd.DataFrame:
-    where = f"WHERE brand_queried = '{brand}'" if brand else ""
+    if brand:
+        return run_query(
+            conn,
+            f"SELECT primary_category AS category, COUNT(*) AS product_count "
+            f"FROM {DB}.{SCHEMA}.fct_products WHERE brand_queried = %s "
+            "GROUP BY primary_category ORDER BY product_count DESC",
+            (brand,),
+        )
     return run_query(
         conn,
         f"SELECT primary_category AS category, COUNT(*) AS product_count "
-        f"FROM {DB}.{SCHEMA}.fct_products {where} "
+        f"FROM {DB}.{SCHEMA}.fct_products "
         "GROUP BY primary_category ORDER BY product_count DESC",
     )
 
