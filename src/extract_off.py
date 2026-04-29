@@ -76,7 +76,8 @@ def setup_table(cur):
             LOADED_AT      TIMESTAMP_NTZ
         )
     """)
-    cur.execute("TRUNCATE TABLE OPEN_FOOD_FACTS")
+    if os.environ.get("TRUNCATE_BEFORE_LOAD", "").lower() == "true":
+        cur.execute("TRUNCATE TABLE OPEN_FOOD_FACTS")
 
 
 def main():
