@@ -199,3 +199,62 @@ def test_kpi_delta_returns_none_when_single_date():
         result = streamlit_app.kpi_delta(conn)
     assert result["total_products"] is None
     assert result["num_categories"] is None
+
+
+def test_compute_concentration_low_opportunity():
+    import streamlit_app
+    df = pd.DataFrame({
+        "VERTICAL": ["pet_care"] * 4,
+        "BRAND_NAME": ["A", "B", "C", "D"],
+        "PRODUCT_COUNT": [80, 10, 5, 5],
+    })
+    result = streamlit_app.compute_concentration(df)
+    assert len(result) == 1
+    row = result.iloc[0]
+    assert row["vertical"] == "pet_care"
+    assert row["top3_share_pct"] == 95.0    # (80+10+5)/100
+    assert row["opportunity_tier"] == "Low Opportunity"
+    assert row["unique_brands"] == 4
+    assert row["total_products"] == 100
+
+
+def test_compute_concentration_high_opportunity():
+    import streamlit_app
+    df = pd.DataFrame({
+        "VERTICAL": ["home_care"] * 10,
+        "BRAND_NAME": [f"brand{i}" for i in range(10)],
+        "PRODUCT_COUNT": [10] * 10,
+    })
+    result = streamlit_app.compute_concentration(df)
+    row = result.iloc[0]
+    assert row["top3_share_pct"] == 30.0    # 30/100
+    assert row["opportunity_tier"] == "High Opportunity"
+
+
+def test_compute_concentration_medium():
+    import streamlit_app
+    # sorted desc: 40, 15, 15, 10, 10, 10 → top3 = 70/100 = 70% → Medium (≤ 70)
+    df = pd.DataFrame({
+        "VERTICAL": ["health_wellness"] * 6,
+        "BRAND_NAME": ["A", "B", "C", "D", "E", "F"],
+        "PRODUCT_COUNT": [40, 15, 10, 15, 10, 10],
+    })
+    result = streamlit_app.compute_concentration(df)
+    row = result.iloc[0]
+    assert row["top3_share_pct"] == 70.0
+    assert row["opportunity_tier"] == "Medium"
+
+
+def test_compute_concentration_two_verticals():
+    import streamlit_app
+    df = pd.DataFrame({
+        "VERTICAL": ["pet_care"] * 4 + ["home_care"] * 10,
+        "BRAND_NAME": ["A", "B", "C", "D"] + [f"hb{i}" for i in range(10)],
+        "PRODUCT_COUNT": [80, 10, 5, 5] + [10] * 10,
+    })
+    result = streamlit_app.compute_concentration(df)
+    assert len(result) == 2
+    pet = result[result["vertical"] == "pet_care"].iloc[0]
+    home = result[result["vertical"] == "home_care"].iloc[0]
+    assert pet["opportunity_tier"] == "Low Opportunity"
+    assert home["opportunity_tier"] == "High Opportunity"

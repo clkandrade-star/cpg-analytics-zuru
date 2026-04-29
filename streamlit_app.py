@@ -53,6 +53,30 @@ def detect_columns(_conn) -> set:
     return {c.lower() for c in df["COLUMN_NAME"].tolist()}
 
 
+def compute_concentration(df: pd.DataFrame) -> pd.DataFrame:
+    rows = []
+    for vertical, group in df.groupby("VERTICAL"):
+        group_sorted = group.sort_values("PRODUCT_COUNT", ascending=False)
+        total = int(group_sorted["PRODUCT_COUNT"].sum())
+        unique = len(group_sorted)
+        top3 = int(group_sorted.head(3)["PRODUCT_COUNT"].sum())
+        top3_share = round(top3 / total * 100, 1) if total > 0 else 0.0
+        if top3_share < 40:
+            tier = "High Opportunity"
+        elif top3_share <= 70:
+            tier = "Medium"
+        else:
+            tier = "Low Opportunity"
+        rows.append({
+            "vertical": vertical,
+            "total_products": total,
+            "unique_brands": unique,
+            "top3_share_pct": top3_share,
+            "opportunity_tier": tier,
+        })
+    return pd.DataFrame(rows)
+
+
 def _where(
     brand: str | None,
     start=None,
