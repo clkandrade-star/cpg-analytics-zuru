@@ -88,3 +88,50 @@ def test_zuru_product_count_returns_int():
         result = streamlit_app.zuru_product_count(conn)
     assert result == 9999
     assert isinstance(result, int)
+
+
+def test_trends_time_passes_date_filter():
+    import streamlit_app
+    conn = make_conn()
+    df = pd.DataFrame({"WEEK": ["2026-01-05"], "PRODUCT_COUNT": [10]})
+    captured = {}
+    def fake_query(_conn, sql, params=()):
+        captured["sql"] = sql
+        captured["params"] = params
+        return df
+    with patch("streamlit_app.run_query", side_effect=fake_query):
+        streamlit_app.trends_time(conn, None, date(2026, 1, 1), date(2026, 4, 29))
+    assert "DATE_TRUNC" in captured["sql"]
+    assert date(2026, 1, 1) in captured["params"]
+
+
+def test_trends_vertical_no_brand_filter():
+    import streamlit_app
+    conn = make_conn()
+    df = pd.DataFrame({"VERTICAL": ["pet_care", "baby_care"], "PRODUCT_COUNT": [300, 200]})
+    captured = {}
+    def fake_query(_conn, sql, params=()):
+        captured["sql"] = sql
+        captured["params"] = params
+        return df
+    with patch("streamlit_app.run_query", side_effect=fake_query):
+        result = streamlit_app.trends_vertical(conn, None)
+    assert "vertical" in captured["sql"].lower()
+    assert captured["params"] == ()
+    assert len(result) == 2
+
+
+def test_category_counts_returns_top15_ascending():
+    import streamlit_app
+    conn = make_conn()
+    rows = [{"CATEGORY": f"cat{i}", "PRODUCT_COUNT": i} for i in range(1, 16)]
+    df = pd.DataFrame(rows)
+    captured = {}
+    def fake_query(_conn, sql, params=()):
+        captured["sql"] = sql
+        return df
+    with patch("streamlit_app.run_query", side_effect=fake_query):
+        result = streamlit_app.category_counts(conn, None)
+    assert "ASC" in captured["sql"]
+    assert "LIMIT 15" in captured["sql"]
+    assert len(result) == 15

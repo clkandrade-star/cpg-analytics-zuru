@@ -105,6 +105,39 @@ def zuru_product_count(_conn) -> int:
     return int(df.iloc[0]["ZURU_PRODUCT_COUNT"])
 
 
+def trends_time(_conn, brand: str | None, start=None, end=None) -> pd.DataFrame:
+    where, params = _where(brand, start, end, has_date=True)
+    return run_query(
+        _conn,
+        f"SELECT DATE_TRUNC('week', loaded_at)::DATE AS week, COUNT(*) AS product_count "
+        f"FROM {DB}.{SCHEMA}.fct_products {where} GROUP BY 1 ORDER BY 1",
+        params,
+    )
+
+
+def trends_vertical(_conn, brand: str | None) -> pd.DataFrame:
+    where, params = _where(brand)
+    return run_query(
+        _conn,
+        f"SELECT vertical, COUNT(*) AS product_count "
+        f"FROM {DB}.{SCHEMA}.fct_products {where} GROUP BY vertical ORDER BY product_count DESC",
+        params,
+    )
+
+
+def category_counts(_conn, brand: str | None, start=None, end=None, has_date: bool = False) -> pd.DataFrame:
+    where, params = _where(brand, start, end, has_date)
+    return run_query(
+        _conn,
+        f"SELECT category, product_count FROM ("
+        f"  SELECT primary_category AS category, COUNT(*) AS product_count "
+        f"  FROM {DB}.{SCHEMA}.fct_products {where} "
+        f"  GROUP BY primary_category ORDER BY product_count DESC LIMIT 15"
+        f") sub ORDER BY product_count ASC",
+        params,
+    )
+
+
 # ── UI ─────────────────────────────────────────────────────────────────────
 
 def main():
