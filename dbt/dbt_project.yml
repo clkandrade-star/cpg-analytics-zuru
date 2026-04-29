@@ -1,0 +1,20 @@
+name: cpg_analytics
+version: "1.0.0"
+config-version: 2
+
+profile: cpg_analytics
+
+model-paths: ["models"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+
+target-path: "target"
+clean-targets:
+  - target
+  - dbt_packages
+
+models:
+  cpg_analytics:
+    marts:
+      +materialized: table
+      +schema: DBT_CANDRADE
