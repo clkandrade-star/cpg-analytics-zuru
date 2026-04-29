@@ -138,6 +138,23 @@ def category_counts(_conn, brand: str | None, start=None, end=None, has_date: bo
     )
 
 
+def product_detail(
+    _conn,
+    brand: str | None,
+    start=None,
+    end=None,
+    has_date: bool = False,
+) -> pd.DataFrame:
+    where, params = _where(brand, start, end, has_date)
+    date_col = ", loaded_at" if has_date else ""
+    return run_query(
+        _conn,
+        f"SELECT brand_queried, primary_category, vertical{date_col} "
+        f"FROM {DB}.{SCHEMA}.fct_products {where} LIMIT 500",
+        params,
+    )
+
+
 # ── UI ─────────────────────────────────────────────────────────────────────
 
 def main():

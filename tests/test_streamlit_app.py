@@ -135,3 +135,39 @@ def test_category_counts_returns_top15_ascending():
     assert "ASC" in captured["sql"]
     assert "LIMIT 15" in captured["sql"]
     assert len(result) == 15
+
+
+def test_product_detail_selects_loaded_at_when_available():
+    import streamlit_app
+    conn = make_conn()
+    df = pd.DataFrame({
+        "BRAND_QUERIED": ["ZURU"],
+        "PRIMARY_CATEGORY": ["pet-food"],
+        "VERTICAL": ["pet_care"],
+        "LOADED_AT": ["2026-04-01"],
+    })
+    captured = {}
+    def fake_query(_conn, sql, params=()):
+        captured["sql"] = sql
+        return df
+    with patch("streamlit_app.run_query", side_effect=fake_query):
+        streamlit_app.product_detail(conn, None, has_date=True)
+    assert "loaded_at" in captured["sql"].lower()
+    assert "LIMIT 500" in captured["sql"]
+
+
+def test_product_detail_omits_loaded_at_when_unavailable():
+    import streamlit_app
+    conn = make_conn()
+    df = pd.DataFrame({
+        "BRAND_QUERIED": ["ZURU"],
+        "PRIMARY_CATEGORY": ["pet-food"],
+        "VERTICAL": ["pet_care"],
+    })
+    captured = {}
+    def fake_query(_conn, sql, params=()):
+        captured["sql"] = sql
+        return df
+    with patch("streamlit_app.run_query", side_effect=fake_query):
+        streamlit_app.product_detail(conn, None, has_date=False)
+    assert "loaded_at" not in captured["sql"].lower()
