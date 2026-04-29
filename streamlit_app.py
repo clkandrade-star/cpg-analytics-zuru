@@ -136,15 +136,6 @@ def _where(
     return where, tuple(params)
 
 
-def brand_options(_conn) -> list:
-    df = run_query(
-        _conn,
-        f"SELECT DISTINCT brand_queried FROM {DB}.{SCHEMA}.fct_products "
-        "WHERE brand_queried IS NOT NULL ORDER BY brand_queried",
-    )
-    return df["BRAND_QUERIED"].tolist()
-
-
 def kpi_summary(_conn, brand: str | None, start=None, end=None, has_date: bool = False) -> dict:
     where, params = _where(brand, start, end, has_date)
     df = run_query(
@@ -195,61 +186,6 @@ def kpi_delta(_conn) -> dict:
         "total_products": int(current["TOTAL_PRODUCTS"]) - int(prior["TOTAL_PRODUCTS"]),
         "num_categories": int(current["NUM_CATEGORIES"]) - int(prior["NUM_CATEGORIES"]),
     }
-
-
-def trends_time(_conn, brand: str | None, start=None, end=None) -> pd.DataFrame:
-    where, params = _where(brand, start, end, has_date=True)
-    return run_query(
-        _conn,
-        f"SELECT DATE_TRUNC('week', loaded_at)::DATE AS week, COUNT(*) AS product_count "
-        f"FROM {DB}.{SCHEMA}.fct_products {where} GROUP BY 1 ORDER BY 1",
-        params,
-    )
-
-
-def trends_vertical(_conn, brand: str | None) -> pd.DataFrame:
-    where, params = _where(brand)
-    return run_query(
-        _conn,
-        f"SELECT vertical, COUNT(*) AS product_count "
-        f"FROM {DB}.{SCHEMA}.fct_products {where} GROUP BY vertical ORDER BY product_count DESC",
-        params,
-    )
-
-
-def category_counts(_conn, brand: str | None, start=None, end=None, has_date: bool = False) -> pd.DataFrame:
-    where, params = _where(brand, start, end, has_date)
-    return run_query(
-        _conn,
-        f"SELECT category, product_count FROM ("
-        f"  SELECT primary_category AS category, COUNT(*) AS product_count "
-        f"  FROM {DB}.{SCHEMA}.fct_products {where} "
-        f"  GROUP BY primary_category ORDER BY product_count DESC LIMIT 15"
-        f") sub ORDER BY product_count ASC",
-        params,
-    )
-
-
-def product_detail(
-    _conn,
-    brand: str | None,
-    start=None,
-    end=None,
-    has_date: bool = False,
-    has_vertical: bool = False,
-) -> pd.DataFrame:
-    where, params = _where(brand, start, end, has_date)
-    extra = ""
-    if has_vertical:
-        extra += ", vertical"
-    if has_date:
-        extra += ", loaded_at"
-    return run_query(
-        _conn,
-        f"SELECT brand_queried, primary_category{extra} "
-        f"FROM {DB}.{SCHEMA}.fct_products {where} LIMIT 500",
-        params,
-    )
 
 
 # ── UI ─────────────────────────────────────────────────────────────────────
