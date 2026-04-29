@@ -254,13 +254,15 @@ def product_detail(
 
 # ── UI ─────────────────────────────────────────────────────────────────────
 
+ALL_VERTICALS = ["pet_care", "baby_care", "personal_care", "home_care", "health_wellness"]
+
+
 def main():
     st.set_page_config(
         page_title="ZURU CPG Competitive Intelligence Dashboard",
         layout="wide",
     )
 
-    # ── Connect ───────────────────────────────────────────────────────────
     try:
         conn = get_conn()
     except Exception as e:
@@ -274,9 +276,11 @@ def main():
     st.sidebar.title("ZURU CPG Intelligence")
     st.sidebar.divider()
 
-    brands = brand_options(conn)
-    selection = st.sidebar.selectbox("Brand Filter", ["All Brands"] + brands)
-    selected_brand = None if selection == "All Brands" else selection
+    selected_verticals = st.sidebar.multiselect(
+        "Vertical Filter",
+        options=ALL_VERTICALS,
+        default=ALL_VERTICALS,
+    )
 
     start_date, end_date = None, None
     if has_date:
@@ -292,8 +296,8 @@ def main():
     st.caption("Competitive product intelligence across ZURU's five CPG verticals")
     st.divider()
 
-    # ── KPI Cards ─────────────────────────────────────────────────────────
-    kpis = kpi_summary(conn, selected_brand, start_date, end_date, has_date)
+    # ── Zone 1: KPI Cards ─────────────────────────────────────────────────
+    kpis = kpi_summary(conn, None, start_date, end_date, has_date)
     zuru_count = zuru_product_count(conn)
     deltas = kpi_delta(conn)
 
@@ -305,70 +309,38 @@ def main():
 
     st.divider()
 
-    has_vertical = "vertical" in cols_available
+    # ── Zones 2 + 3: Concentration ────────────────────────────────────────
+    df_brands = brand_concentration(conn)
+    if df_brands.empty:
+        st.info("No brand data available.")
+    else:
+        active = selected_verticals if selected_verticals else ALL_VERTICALS
+        df_filtered = df_brands[df_brands["VERTICAL"].isin(active)]
+        df_conc = compute_concentration(df_filtered)
 
-    # ── Product Trends ────────────────────────────────────────────────────
-    if has_date:
-        df_trends = trends_time(conn, selected_brand, start_date, end_date)
-        if df_trends.empty:
-            st.info("No trend data for the selected filters.")
+        st.subheader("Market Concentration by Vertical")
+        if df_conc.empty:
+            st.info("No data for selected verticals.")
         else:
-            fig_trends = px.line(
-                df_trends,
-                x="WEEK",
-                y="PRODUCT_COUNT",
-                title="Product Trends Over Time",
-                labels={"WEEK": "Week", "PRODUCT_COUNT": "Product Count"},
-                color_discrete_sequence=["#2563EB"],
+            score_cols = st.columns(len(df_conc))
+            for col, (_, row) in zip(score_cols, df_conc.iterrows()):
+                col.metric(
+                    label=row["vertical"].replace("_", " ").title(),
+                    value=f"{row['top3_share_pct']:.1f}%",
+                    delta=row["opportunity_tier"],
+                    delta_color="off",
+                )
+            st.caption(
+                "Top-3 brand share of products per vertical. "
+                "Lower % = more fragmented market = higher disruption opportunity for ZURU."
             )
-            st.plotly_chart(fig_trends, use_container_width=True)
-    elif has_vertical:
-        df_trends = trends_vertical(conn, selected_brand)
-        if df_trends.empty:
-            st.info("No vertical data available.")
-        else:
-            fig_trends = px.bar(
-                df_trends,
-                x="VERTICAL",
-                y="PRODUCT_COUNT",
-                title="Products by ZURU Vertical",
-                labels={"VERTICAL": "Vertical", "PRODUCT_COUNT": "Product Count"},
-                color_discrete_sequence=["#2563EB"],
-            )
-            st.plotly_chart(fig_trends, use_container_width=True)
-    else:
-        st.info("No date or vertical column available for trend chart.")
 
-    # ── Top Categories ────────────────────────────────────────────────────
-    df_cats = category_counts(conn, selected_brand, start_date, end_date, has_date)
-    if df_cats.empty:
-        st.info("No category data for the selected filters.")
-    else:
-        fig_cats = px.bar(
-            df_cats,
-            x="PRODUCT_COUNT",
-            y="CATEGORY",
-            orientation="h",
-            title="Top Categories by Product Count",
-            labels={"CATEGORY": "Category", "PRODUCT_COUNT": "Product Count"},
-            color_discrete_sequence=["#2563EB"],
-        )
-        st.plotly_chart(fig_cats, use_container_width=True)
+        st.divider()
 
-    # ── Product Details Table ─────────────────────────────────────────────
-    st.subheader("Product Details")
-    df_detail = product_detail(conn, selected_brand, start_date, end_date, has_date, has_vertical)
-    if df_detail.empty:
-        st.info("No products match the selected filters.")
-    else:
-        rename_map = {
-            "BRAND_QUERIED": "Brand",
-            "PRIMARY_CATEGORY": "Category",
-            "VERTICAL": "Vertical",
-            "LOADED_AT": "Date",
-        }
-        df_display = df_detail.rename(columns={k: v for k, v in rename_map.items() if k in df_detail.columns})
-        st.dataframe(df_display, use_container_width=True)
+        st.subheader("Top 5 Brands by Vertical")
+        fig = top_brands_chart(df_filtered, active)
+        if fig is not None:
+            st.plotly_chart(fig, use_container_width=True)
 
 
 if __name__ == "__main__":
