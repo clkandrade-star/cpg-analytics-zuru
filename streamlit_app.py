@@ -3,6 +3,8 @@ from datetime import date
 
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import snowflake.connector
 import streamlit as st
 from dotenv import load_dotenv
@@ -88,6 +90,33 @@ def brand_concentration(_conn) -> pd.DataFrame:
         "GROUP BY vertical, brand_name "
         "ORDER BY vertical, product_count DESC",
     )
+
+
+def top_brands_chart(df: pd.DataFrame, selected_verticals: list) -> go.Figure | None:
+    verticals = [v for v in selected_verticals if v in df["VERTICAL"].values]
+    if not verticals:
+        return None
+    cols = min(2, len(verticals))
+    rows = (len(verticals) + cols - 1) // cols
+    titles = [v.replace("_", " ").title() for v in verticals]
+    fig = make_subplots(rows=rows, cols=cols, subplot_titles=titles)
+    for i, vertical in enumerate(verticals):
+        row_idx = i // cols + 1
+        col_idx = i % cols + 1
+        df_v = df[df["VERTICAL"] == vertical].nlargest(5, "PRODUCT_COUNT")
+        fig.add_trace(
+            go.Bar(
+                x=df_v["PRODUCT_COUNT"],
+                y=df_v["BRAND_NAME"],
+                orientation="h",
+                showlegend=False,
+                marker_color="#2563EB",
+            ),
+            row=row_idx,
+            col=col_idx,
+        )
+    fig.update_layout(height=300 * rows, title_text="Top 5 Brands by Vertical")
+    return fig
 
 
 def _where(
