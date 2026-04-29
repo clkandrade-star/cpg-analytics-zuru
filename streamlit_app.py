@@ -53,6 +53,58 @@ def detect_columns(_conn) -> set:
     return {c.lower() for c in df["COLUMN_NAME"].tolist()}
 
 
+def _where(
+    brand: str | None,
+    start=None,
+    end=None,
+    has_date: bool = False,
+) -> tuple[str, tuple]:
+    clauses, params = [], []
+    if brand:
+        clauses.append("brand_queried = %s")
+        params.append(brand)
+    if has_date and start and end:
+        clauses.append("loaded_at::DATE BETWEEN %s AND %s")
+        params.extend([start, end])
+    where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+    return where, tuple(params)
+
+
+def brand_options(_conn) -> list:
+    df = run_query(
+        _conn,
+        f"SELECT DISTINCT brand_queried FROM {DB}.{SCHEMA}.fct_products "
+        "WHERE brand_queried IS NOT NULL ORDER BY brand_queried",
+    )
+    return df["BRAND_QUERIED"].tolist()
+
+
+def kpi_summary(_conn, brand: str | None, start=None, end=None, has_date: bool = False) -> dict:
+    where, params = _where(brand, start, end, has_date)
+    df = run_query(
+        _conn,
+        f"SELECT COUNT(*) AS total_products, "
+        f"COUNT(DISTINCT brand_queried) AS num_brands, "
+        f"COUNT(DISTINCT primary_category) AS num_categories "
+        f"FROM {DB}.{SCHEMA}.fct_products {where}",
+        params,
+    )
+    row = df.iloc[0]
+    return {
+        "total_products": int(row["TOTAL_PRODUCTS"]),
+        "num_brands": int(row["NUM_BRANDS"]),
+        "num_categories": int(row["NUM_CATEGORIES"]),
+    }
+
+
+def zuru_product_count(_conn) -> int:
+    df = run_query(
+        _conn,
+        f"SELECT COUNT(*) AS zuru_product_count FROM {DB}.{SCHEMA}.fct_products",
+    )
+    return int(df.iloc[0]["ZURU_PRODUCT_COUNT"])
+
+
 # ── UI ─────────────────────────────────────────────────────────────────────
 
 def main():
