@@ -205,7 +205,11 @@ def main():
         st.error(f"Could not connect to Snowflake: {e}")
         st.stop()
 
-    cols_available = detect_columns(conn)
+    try:
+        cols_available = detect_columns(conn)
+    except Exception as e:
+        st.error(f"Snowflake query error: {e}")
+        st.stop()
     has_date = "loaded_at" in cols_available
 
     # ── Sidebar ───────────────────────────────────────────────────────────
