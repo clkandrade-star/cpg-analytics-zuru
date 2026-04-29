@@ -171,3 +171,31 @@ def test_product_detail_omits_loaded_at_when_unavailable():
     with patch("streamlit_app.run_query", side_effect=fake_query):
         streamlit_app.product_detail(conn, None, has_date=False)
     assert "loaded_at" not in captured["sql"].lower()
+
+
+def test_kpi_delta_returns_deltas_when_two_dates_exist():
+    import streamlit_app
+    conn = make_conn()
+    df = pd.DataFrame({
+        "LOAD_DATE": [date(2026, 4, 29), date(2026, 4, 28)],
+        "TOTAL_PRODUCTS": [510, 500],
+        "NUM_CATEGORIES": [40, 38],
+    })
+    with patch("streamlit_app.run_query", return_value=df):
+        result = streamlit_app.kpi_delta(conn)
+    assert result["total_products"] == 10
+    assert result["num_categories"] == 2
+
+
+def test_kpi_delta_returns_none_when_single_date():
+    import streamlit_app
+    conn = make_conn()
+    df = pd.DataFrame({
+        "LOAD_DATE": [date(2026, 4, 29)],
+        "TOTAL_PRODUCTS": [500],
+        "NUM_CATEGORIES": [38],
+    })
+    with patch("streamlit_app.run_query", return_value=df):
+        result = streamlit_app.kpi_delta(conn)
+    assert result["total_products"] is None
+    assert result["num_categories"] is None

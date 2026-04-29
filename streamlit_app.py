@@ -105,6 +105,32 @@ def zuru_product_count(_conn) -> int:
     return int(df.iloc[0]["ZURU_PRODUCT_COUNT"])
 
 
+def kpi_delta(_conn) -> dict:
+    """Day-over-day deltas from the raw table (has LOADED_AT). Returns None per
+    key when fewer than two distinct dates exist."""
+    df = run_query(
+        _conn,
+        "SELECT loaded_at::DATE AS load_date, "
+        "COUNT(*) AS total_products, "
+        "COUNT(DISTINCT category_tag) AS num_categories "
+        "FROM CPG_ANALYTICS.RAW.OPEN_FOOD_FACTS "
+        "WHERE loaded_at::DATE IN ("
+        "  SELECT DISTINCT loaded_at::DATE "
+        "  FROM CPG_ANALYTICS.RAW.OPEN_FOOD_FACTS "
+        "  ORDER BY loaded_at::DATE DESC LIMIT 2"
+        ") "
+        "GROUP BY loaded_at::DATE "
+        "ORDER BY load_date DESC",
+    )
+    if len(df) < 2:
+        return {"total_products": None, "num_categories": None}
+    current, prior = df.iloc[0], df.iloc[1]
+    return {
+        "total_products": int(current["TOTAL_PRODUCTS"]) - int(prior["TOTAL_PRODUCTS"]),
+        "num_categories": int(current["NUM_CATEGORIES"]) - int(prior["NUM_CATEGORIES"]),
+    }
+
+
 def trends_time(_conn, brand: str | None, start=None, end=None) -> pd.DataFrame:
     where, params = _where(brand, start, end, has_date=True)
     return run_query(
@@ -203,12 +229,13 @@ def main():
     # ── KPI Cards ─────────────────────────────────────────────────────────
     kpis = kpi_summary(conn, selected_brand, start_date, end_date, has_date)
     zuru_count = zuru_product_count(conn)
+    deltas = kpi_delta(conn)
 
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Total Products", f"{kpis['total_products']:,}")
+    c1.metric("Total Products", f"{kpis['total_products']:,}", delta=deltas["total_products"])
     c2.metric("Number of Brands", f"{kpis['num_brands']:,}")
-    c3.metric("Number of Categories", f"{kpis['num_categories']:,}")
-    c4.metric("ZURU Product Count", f"{zuru_count:,}")
+    c3.metric("Number of Categories", f"{kpis['num_categories']:,}", delta=deltas["num_categories"])
+    c4.metric("ZURU Product Count", f"{zuru_count:,}", delta=deltas["total_products"])
 
     st.divider()
 
