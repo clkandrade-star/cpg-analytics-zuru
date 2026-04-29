@@ -1,0 +1,43 @@
+version: 2
+
+models:
+  - name: fct_products
+    description: "One row per product-load. Extracted from Open Food Facts across ZURU's five CPG verticals."
+    columns:
+      - name: product_id
+        description: "Surrogate key (MD5 of barcode + vertical + load timestamp)"
+        tests: [unique, not_null]
+      - name: barcode
+        description: "Open Food Facts product code"
+        tests: [not_null]
+      - name: brand_queried
+        description: "Brand name extracted from RAW_JSON:brands"
+        tests: [not_null]
+      - name: primary_category
+        description: "Main product category from RAW_JSON:main_category"
+        tests: [not_null]
+      - name: vertical
+        description: "ZURU Edge vertical"
+        tests:
+          - not_null
+          - accepted_values:
+              values: [pet_care, baby_care, personal_care, home_care, health_wellness]
+      - name: loaded_at
+        description: "UTC timestamp of the pipeline run that loaded this row"
+        tests: [not_null]
+
+  - name: dim_brands
+    description: "Distinct brands observed across all pipeline loads."
+    columns:
+      - name: brand_id
+        tests: [unique, not_null]
+      - name: brand_name
+        tests: [unique, not_null]
+
+  - name: dim_categories
+    description: "Distinct product categories observed across all pipeline loads."
+    columns:
+      - name: category_id
+        tests: [unique, not_null]
+      - name: category_name
+        tests: [unique, not_null]
