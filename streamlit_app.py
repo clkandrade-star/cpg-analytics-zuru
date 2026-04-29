@@ -162,16 +162,111 @@ def main():
         page_title="ZURU CPG Competitive Intelligence Dashboard",
         layout="wide",
     )
-    st.title("ZURU CPG Competitive Intelligence Dashboard")
-    st.caption("Competitive product intelligence across ZURU's five CPG verticals")
 
+    # ── Connect ───────────────────────────────────────────────────────────
     try:
         conn = get_conn()
     except Exception as e:
         st.error(f"Could not connect to Snowflake: {e}")
         st.stop()
 
-    st.info("Connected — more features coming soon.")
+    cols_available = detect_columns(conn)
+    has_date = "loaded_at" in cols_available
+
+    # ── Sidebar ───────────────────────────────────────────────────────────
+    st.sidebar.title("ZURU CPG Intelligence")
+    st.sidebar.divider()
+
+    brands = brand_options(conn)
+    selection = st.sidebar.selectbox("Brand Filter", ["All Brands"] + brands)
+    selected_brand = None if selection == "All Brands" else selection
+
+    start_date, end_date = None, None
+    if has_date:
+        date_range = st.sidebar.date_input(
+            "Date Range",
+            value=(date(2026, 1, 1), date.today()),
+        )
+        if isinstance(date_range, (list, tuple)) and len(date_range) == 2:
+            start_date, end_date = date_range
+
+    # ── Header ────────────────────────────────────────────────────────────
+    st.title("ZURU CPG Competitive Intelligence Dashboard")
+    st.caption("Competitive product intelligence across ZURU's five CPG verticals")
+    st.divider()
+
+    # ── KPI Cards ─────────────────────────────────────────────────────────
+    kpis = kpi_summary(conn, selected_brand, start_date, end_date, has_date)
+    zuru_count = zuru_product_count(conn)
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Total Products", f"{kpis['total_products']:,}")
+    c2.metric("Number of Brands", f"{kpis['num_brands']:,}")
+    c3.metric("Number of Categories", f"{kpis['num_categories']:,}")
+    c4.metric("ZURU Product Count", f"{zuru_count:,}")
+
+    st.divider()
+
+    # ── Product Trends ────────────────────────────────────────────────────
+    if has_date:
+        df_trends = trends_time(conn, selected_brand, start_date, end_date)
+        if df_trends.empty:
+            st.info("No trend data for the selected filters.")
+        else:
+            fig_trends = px.line(
+                df_trends,
+                x="WEEK",
+                y="PRODUCT_COUNT",
+                title="Product Trends Over Time",
+                labels={"WEEK": "Week", "PRODUCT_COUNT": "Product Count"},
+                color_discrete_sequence=["#2563EB"],
+            )
+            st.plotly_chart(fig_trends, use_container_width=True)
+    else:
+        df_trends = trends_vertical(conn, selected_brand)
+        if df_trends.empty:
+            st.info("No vertical data available.")
+        else:
+            fig_trends = px.bar(
+                df_trends,
+                x="VERTICAL",
+                y="PRODUCT_COUNT",
+                title="Products by ZURU Vertical",
+                labels={"VERTICAL": "Vertical", "PRODUCT_COUNT": "Product Count"},
+                color_discrete_sequence=["#2563EB"],
+            )
+            st.plotly_chart(fig_trends, use_container_width=True)
+
+    # ── Top Categories ────────────────────────────────────────────────────
+    df_cats = category_counts(conn, selected_brand, start_date, end_date, has_date)
+    if df_cats.empty:
+        st.info("No category data for the selected filters.")
+    else:
+        fig_cats = px.bar(
+            df_cats,
+            x="PRODUCT_COUNT",
+            y="CATEGORY",
+            orientation="h",
+            title="Top Categories by Product Count",
+            labels={"CATEGORY": "Category", "PRODUCT_COUNT": "Product Count"},
+            color_discrete_sequence=["#2563EB"],
+        )
+        st.plotly_chart(fig_cats, use_container_width=True)
+
+    # ── Product Details Table ─────────────────────────────────────────────
+    st.subheader("Product Details")
+    df_detail = product_detail(conn, selected_brand, start_date, end_date, has_date)
+    if df_detail.empty:
+        st.info("No products match the selected filters.")
+    else:
+        rename_map = {
+            "BRAND_QUERIED": "Brand",
+            "PRIMARY_CATEGORY": "Category",
+            "VERTICAL": "Vertical",
+            "LOADED_AT": "Date",
+        }
+        df_display = df_detail.rename(columns={k: v for k, v in rename_map.items() if k in df_detail.columns})
+        st.dataframe(df_display, use_container_width=True)
 
 
 if __name__ == "__main__":
