@@ -1,4 +1,5 @@
 import os
+from datetime import date
 
 import pandas as pd
 import plotly.express as px
@@ -11,6 +12,8 @@ load_dotenv()
 DB = "CPG_ANALYTICS"
 SCHEMA = "DBT_CANDRADE"
 
+
+# ── Connection & base query ────────────────────────────────────────────────
 
 @st.cache_resource
 def get_conn():
@@ -37,85 +40,37 @@ def run_query(_conn, sql: str, params: tuple = ()) -> pd.DataFrame:
         cur.close()
 
 
-def brand_options(conn) -> list[str]:
+# ── Data helpers ───────────────────────────────────────────────────────────
+
+@st.cache_data(ttl=300)
+def detect_columns(_conn) -> set:
     df = run_query(
-        conn,
-        f"SELECT DISTINCT brand_queried FROM {DB}.{SCHEMA}.fct_products "
-        "WHERE brand_queried IS NOT NULL ORDER BY brand_queried",
+        _conn,
+        f"SELECT column_name FROM {DB}.information_schema.columns "
+        f"WHERE table_schema = %s AND table_name = %s",
+        (SCHEMA, "FCT_PRODUCTS"),
     )
-    return df["BRAND_QUERIED"].tolist()
+    return {c.lower() for c in df["COLUMN_NAME"].tolist()}
 
 
-def brand_counts(conn, brand: str | None) -> pd.DataFrame:
-    if brand:
-        return run_query(
-            conn,
-            f"SELECT brand_queried AS brand, COUNT(*) AS product_count "
-            f"FROM {DB}.{SCHEMA}.fct_products WHERE brand_queried = %s "
-            "GROUP BY brand_queried ORDER BY product_count DESC LIMIT 30",
-            (brand,),
-        )
-    return run_query(
-        conn,
-        f"SELECT brand_queried AS brand, COUNT(*) AS product_count "
-        f"FROM {DB}.{SCHEMA}.fct_products "
-        "GROUP BY brand_queried ORDER BY product_count DESC LIMIT 30",
+# ── UI ─────────────────────────────────────────────────────────────────────
+
+def main():
+    st.set_page_config(
+        page_title="ZURU CPG Competitive Intelligence Dashboard",
+        layout="wide",
     )
+    st.title("ZURU CPG Competitive Intelligence Dashboard")
+    st.caption("Competitive product intelligence across ZURU's five CPG verticals")
+
+    try:
+        conn = get_conn()
+    except Exception as e:
+        st.error(f"Could not connect to Snowflake: {e}")
+        st.stop()
+
+    st.info("Connected — more features coming soon.")
 
 
-def category_counts(conn, brand: str | None) -> pd.DataFrame:
-    if brand:
-        return run_query(
-            conn,
-            f"SELECT primary_category AS category, COUNT(*) AS product_count "
-            f"FROM {DB}.{SCHEMA}.fct_products WHERE brand_queried = %s "
-            "GROUP BY primary_category ORDER BY product_count DESC",
-            (brand,),
-        )
-    return run_query(
-        conn,
-        f"SELECT primary_category AS category, COUNT(*) AS product_count "
-        f"FROM {DB}.{SCHEMA}.fct_products "
-        "GROUP BY primary_category ORDER BY product_count DESC",
-    )
-
-
-st.set_page_config(page_title="CPG Analytics — ZURU", layout="wide")
-st.title("CPG Analytics — ZURU")
-
-try:
-    conn = get_conn()
-except Exception as e:
-    st.error(f"Could not connect to Snowflake: {e}")
-    st.stop()
-
-brands = brand_options(conn)
-selection = st.sidebar.selectbox("Brand", ["All Brands"] + brands)
-selected_brand = None if selection == "All Brands" else selection
-
-df_brands = brand_counts(conn, selected_brand)
-df_cats = category_counts(conn, selected_brand)
-
-st.subheader("Products by Brand")
-if df_brands.empty:
-    st.info("No data for selected brand.")
-else:
-    fig_brands = px.bar(
-        df_brands,
-        x="BRAND",
-        y="PRODUCT_COUNT",
-        labels={"BRAND": "Brand", "PRODUCT_COUNT": "Product Count"},
-    )
-    st.plotly_chart(fig_brands, use_container_width=True)
-
-st.subheader("Products by Category")
-if df_cats.empty:
-    st.info("No data for selected brand.")
-else:
-    fig_cats = px.bar(
-        df_cats,
-        x="CATEGORY",
-        y="PRODUCT_COUNT",
-        labels={"CATEGORY": "Category", "PRODUCT_COUNT": "Product Count"},
-    )
-    st.plotly_chart(fig_cats, use_container_width=True)
+if __name__ == "__main__":
+    main()
