@@ -144,12 +144,17 @@ def product_detail(
     start=None,
     end=None,
     has_date: bool = False,
+    has_vertical: bool = False,
 ) -> pd.DataFrame:
     where, params = _where(brand, start, end, has_date)
-    date_col = ", loaded_at" if has_date else ""
+    extra = ""
+    if has_vertical:
+        extra += ", vertical"
+    if has_date:
+        extra += ", loaded_at"
     return run_query(
         _conn,
-        f"SELECT brand_queried, primary_category, vertical{date_col} "
+        f"SELECT brand_queried, primary_category{extra} "
         f"FROM {DB}.{SCHEMA}.fct_products {where} LIMIT 500",
         params,
     )
@@ -207,6 +212,8 @@ def main():
 
     st.divider()
 
+    has_vertical = "vertical" in cols_available
+
     # ── Product Trends ────────────────────────────────────────────────────
     if has_date:
         df_trends = trends_time(conn, selected_brand, start_date, end_date)
@@ -222,7 +229,7 @@ def main():
                 color_discrete_sequence=["#2563EB"],
             )
             st.plotly_chart(fig_trends, use_container_width=True)
-    else:
+    elif has_vertical:
         df_trends = trends_vertical(conn, selected_brand)
         if df_trends.empty:
             st.info("No vertical data available.")
@@ -236,6 +243,8 @@ def main():
                 color_discrete_sequence=["#2563EB"],
             )
             st.plotly_chart(fig_trends, use_container_width=True)
+    else:
+        st.info("No date or vertical column available for trend chart.")
 
     # ── Top Categories ────────────────────────────────────────────────────
     df_cats = category_counts(conn, selected_brand, start_date, end_date, has_date)
@@ -255,7 +264,7 @@ def main():
 
     # ── Product Details Table ─────────────────────────────────────────────
     st.subheader("Product Details")
-    df_detail = product_detail(conn, selected_brand, start_date, end_date, has_date)
+    df_detail = product_detail(conn, selected_brand, start_date, end_date, has_date, has_vertical)
     if df_detail.empty:
         st.info("No products match the selected filters.")
     else:
