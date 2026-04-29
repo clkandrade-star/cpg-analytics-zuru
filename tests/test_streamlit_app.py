@@ -258,3 +258,24 @@ def test_compute_concentration_two_verticals():
     home = result[result["vertical"] == "home_care"].iloc[0]
     assert pet["opportunity_tier"] == "Low Opportunity"
     assert home["opportunity_tier"] == "High Opportunity"
+
+
+def test_brand_concentration_queries_raw_json():
+    import streamlit_app
+    conn = make_conn()
+    df = pd.DataFrame({
+        "VERTICAL": ["pet_care"],
+        "BRAND_NAME": ["Purina"],
+        "PRODUCT_COUNT": [100],
+    })
+    captured = {}
+    def fake_query(_conn, sql, params=()):
+        captured["sql"] = sql
+        return df
+    with patch("streamlit_app.run_query", side_effect=fake_query):
+        result = streamlit_app.brand_concentration(conn)
+    assert "RAW_JSON:brands" in captured["sql"]
+    assert "OPEN_FOOD_FACTS" in captured["sql"]
+    assert "VERTICAL" in result.columns
+    assert "BRAND_NAME" in result.columns
+    assert "PRODUCT_COUNT" in result.columns

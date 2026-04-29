@@ -77,6 +77,19 @@ def compute_concentration(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+@st.cache_data(ttl=300)
+def brand_concentration(_conn) -> pd.DataFrame:
+    return run_query(
+        _conn,
+        "SELECT vertical, RAW_JSON:brands::string AS brand_name, COUNT(*) AS product_count "
+        "FROM CPG_ANALYTICS.RAW.OPEN_FOOD_FACTS "
+        "WHERE RAW_JSON:brands::string IS NOT NULL "
+        "  AND RAW_JSON:brands::string != '' "
+        "GROUP BY vertical, brand_name "
+        "ORDER BY vertical, product_count DESC",
+    )
+
+
 def _where(
     brand: str | None,
     start=None,
