@@ -1,0 +1,20 @@
+version: 2
+
+sources:
+  - name: raw
+    database: CPG_ANALYTICS
+    schema: RAW
+    tables:
+      - name: open_food_facts
+        description: "Raw Open Food Facts product JSON loaded by extract_off.py"
+        columns:
+          - name: PRODUCT_CODE
+            description: "OFF barcode"
+          - name: VERTICAL
+            description: "ZURU Edge vertical (pet_care, baby_care, etc.)"
+          - name: CATEGORY_TAG
+            description: "OFF API category tag used to fetch this row"
+          - name: RAW_JSON
+            description: "Full product JSON from the Open Food Facts API"
+          - name: LOADED_AT
+            description: "UTC timestamp of the pipeline run"
