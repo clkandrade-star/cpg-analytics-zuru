@@ -346,6 +346,29 @@ def main():
         if fig is not None:
             st.plotly_chart(fig, use_container_width=True)
 
+    st.divider()
+    st.subheader("Product Trend Analysis")
+    df_trend = load_trend_data(conn)
+    if df_trend.empty:
+        st.info("No trend data available yet. Run the extraction pipeline first.")
+    else:
+        fig_trend = trend_chart(df_trend)
+        if fig_trend is not None:
+            st.plotly_chart(fig_trend, use_container_width=True)
+        else:
+            st.info("Not enough load dates for trend analysis. Run the extraction on at least 2 separate days.")
+        df_stats = compute_trend_stats(df_trend)
+        if not df_stats.empty:
+            st.dataframe(
+                df_stats.style.format({
+                    "Slope (products/day)": "{:.1f}",
+                    "R²": "{:.3f}",
+                    "Growth %": "{:.1f}%",
+                }),
+                use_container_width=True,
+                hide_index=True,
+            )
+
 
 if __name__ == "__main__":
     main()
