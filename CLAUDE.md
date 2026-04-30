@@ -24,7 +24,7 @@ home care, health & wellness.
 - docs/         proposal, job posting, resume, pipeline diagram
 - src/          Python extraction scripts
 - dbt/          dbt project (staging + mart models)
-- streamlit/    dashboard app
+- streamlit_app.py  dashboard app (Streamlit Community Cloud)
 - knowledge/    raw scraped sources + wiki pages
 
 ## Credentials
