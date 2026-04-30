@@ -177,6 +177,35 @@ def test_compute_concentration_two_verticals():
     assert home["opportunity_tier"] == "High Opportunity"
 
 
+def test_compute_trend_stats_returns_correct_slope():
+    from datetime import date
+    import streamlit_app
+    df = pd.DataFrame({
+        "VERTICAL": ["pet_care", "pet_care", "pet_care"],
+        "LOAD_DATE": [date(2026, 4, 1), date(2026, 4, 2), date(2026, 4, 3)],
+        "PRODUCT_COUNT": [100, 200, 300],
+    })
+    result = streamlit_app.compute_trend_stats(df)
+    assert len(result) == 1
+    row = result.iloc[0]
+    assert row["Vertical"] == "pet_care"
+    assert abs(row["Slope (products/day)"] - 100.0) < 0.1
+    assert abs(row["R²"] - 1.0) < 0.001
+
+
+def test_compute_trend_stats_skips_single_point_verticals():
+    from datetime import date
+    import streamlit_app
+    df = pd.DataFrame({
+        "VERTICAL": ["pet_care", "home_care", "home_care", "home_care"],
+        "LOAD_DATE": [date(2026, 4, 1), date(2026, 4, 1), date(2026, 4, 2), date(2026, 4, 3)],
+        "PRODUCT_COUNT": [100, 50, 100, 150],
+    })
+    result = streamlit_app.compute_trend_stats(df)
+    assert len(result) == 1
+    assert result.iloc[0]["Vertical"] == "home_care"
+
+
 def test_brand_concentration_queries_raw_json():
     import streamlit_app
     conn = make_conn()

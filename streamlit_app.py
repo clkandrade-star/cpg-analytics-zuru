@@ -1,6 +1,7 @@
 import os
 from datetime import date
 
+import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -76,6 +77,30 @@ def compute_concentration(df: pd.DataFrame) -> pd.DataFrame:
             "unique_brands": unique,
             "top3_share_pct": top3_share,
             "opportunity_tier": tier,
+        })
+    return pd.DataFrame(rows)
+
+
+def compute_trend_stats(df: pd.DataFrame) -> pd.DataFrame:
+    rows = []
+    for vertical, group in df.groupby("VERTICAL"):
+        group = group.sort_values("LOAD_DATE")
+        if len(group) < 2:
+            continue
+        x = list(range(len(group)))
+        y = group["PRODUCT_COUNT"].tolist()
+        coeffs = np.polyfit(x, y, 1)
+        slope = coeffs[0]
+        y_pred = np.polyval(coeffs, x)
+        ss_res = sum((yi - yp) ** 2 for yi, yp in zip(y, y_pred))
+        ss_tot = sum((yi - sum(y) / len(y)) ** 2 for yi in y)
+        r2 = 1 - ss_res / ss_tot if ss_tot != 0 else 1.0
+        growth = (y[-1] - y[0]) / y[0] * 100 if y[0] != 0 else 0.0
+        rows.append({
+            "Vertical": vertical,
+            "Slope (products/day)": round(slope, 1),
+            "R²": round(r2, 3),
+            "Growth %": round(growth, 1),
         })
     return pd.DataFrame(rows)
 
