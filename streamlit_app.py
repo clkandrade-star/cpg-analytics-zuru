@@ -106,6 +106,19 @@ def compute_trend_stats(df: pd.DataFrame) -> pd.DataFrame:
 
 
 @st.cache_data(ttl=300)
+def load_trend_data(_conn) -> pd.DataFrame:
+    return run_query(
+        _conn,
+        "SELECT loaded_at::DATE AS load_date, "
+        "vertical, "
+        "COUNT(*) AS product_count "
+        "FROM CPG_ANALYTICS.RAW.OPEN_FOOD_FACTS "
+        "GROUP BY load_date, vertical "
+        "ORDER BY load_date",
+    )
+
+
+@st.cache_data(ttl=300)
 def brand_concentration(_conn) -> pd.DataFrame:
     return run_query(
         _conn,

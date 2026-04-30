@@ -206,6 +206,26 @@ def test_compute_trend_stats_skips_single_point_verticals():
     assert result.iloc[0]["Vertical"] == "home_care"
 
 
+def test_load_trend_data_queries_raw_table():
+    from datetime import date
+    import streamlit_app
+    conn = make_conn()
+    df = pd.DataFrame({
+        "LOAD_DATE": [date(2026, 4, 1)],
+        "VERTICAL": ["pet_care"],
+        "PRODUCT_COUNT": [500],
+    })
+    captured = {}
+    def fake_query(_conn, sql, params=()):
+        captured["sql"] = sql
+        return df
+    with patch("streamlit_app.run_query", side_effect=fake_query):
+        result = streamlit_app.load_trend_data(conn)
+    assert "OPEN_FOOD_FACTS" in captured["sql"]
+    assert "vertical" in captured["sql"]
+    assert not result.empty
+
+
 def test_brand_concentration_queries_raw_json():
     import streamlit_app
     conn = make_conn()
