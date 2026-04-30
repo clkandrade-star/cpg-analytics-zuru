@@ -27,6 +27,7 @@ def get_conn():
         role=os.environ.get("SNOWFLAKE_ROLE", "SYSADMIN"),
         database=DB,
         schema=SCHEMA,
+        authenticator="snowflake",
     )
 
 
