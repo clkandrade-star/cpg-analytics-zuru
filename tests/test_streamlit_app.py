@@ -206,6 +206,24 @@ def test_compute_trend_stats_skips_single_point_verticals():
     assert result.iloc[0]["Vertical"] == "home_care"
 
 
+def test_trend_chart_returns_none_for_empty_df():
+    import streamlit_app
+    result = streamlit_app.trend_chart(pd.DataFrame())
+    assert result is None
+
+
+def test_trend_chart_returns_none_for_single_date():
+    from datetime import date
+    import streamlit_app
+    df = pd.DataFrame({
+        "LOAD_DATE": [date(2026, 4, 1), date(2026, 4, 1)],
+        "VERTICAL": ["pet_care", "home_care"],
+        "PRODUCT_COUNT": [500, 300],
+    })
+    result = streamlit_app.trend_chart(df)
+    assert result is None
+
+
 def test_load_trend_data_queries_raw_table():
     from datetime import date
     import streamlit_app

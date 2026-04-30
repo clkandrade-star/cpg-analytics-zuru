@@ -131,6 +131,31 @@ def brand_concentration(_conn) -> pd.DataFrame:
     )
 
 
+def trend_chart(df: pd.DataFrame) -> go.Figure | None:
+    if df.empty:
+        return None
+    load_date_col = "LOAD_DATE" if "LOAD_DATE" in df.columns else "load_date"
+    vertical_col = "VERTICAL" if "VERTICAL" in df.columns else "vertical"
+    count_col = "PRODUCT_COUNT" if "PRODUCT_COUNT" in df.columns else "product_count"
+    if df[load_date_col].nunique() < 2:
+        return None
+    fig = go.Figure()
+    for vertical in df[vertical_col].unique():
+        df_v = df[df[vertical_col] == vertical].sort_values(load_date_col)
+        fig.add_trace(go.Scatter(
+            x=df_v[load_date_col],
+            y=df_v[count_col],
+            mode="lines+markers",
+            name=vertical.replace("_", " ").title(),
+        ))
+    fig.update_layout(
+        title="Product Count Trend by Vertical",
+        xaxis_title="Load Date",
+        yaxis_title="Product Count",
+    )
+    return fig
+
+
 def top_brands_chart(df: pd.DataFrame, selected_verticals: list) -> go.Figure | None:
     verticals = [v for v in selected_verticals if v in df["VERTICAL"].values]
     if not verticals:
